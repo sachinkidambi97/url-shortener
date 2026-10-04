@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
+using UrlShortener.Api.Exceptions;
 
 namespace UrlShortener.Api.Middleware;
 
@@ -29,6 +30,7 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
         (int statusCode, string title, string detail) = exception switch
         {
             ArgumentException => (StatusCodes.Status400BadRequest, "Bad Request", exception.Message),
+            ForbiddenAccessException => (StatusCodes.Status403Forbidden, "Forbidden", exception.Message),
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized", exception.Message),
             KeyNotFoundException => (StatusCodes.Status404NotFound, "Not Found", exception.Message),
             InvalidOperationException => (StatusCodes.Status409Conflict, "Conflict", exception.Message),

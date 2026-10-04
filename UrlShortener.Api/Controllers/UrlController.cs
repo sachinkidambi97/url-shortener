@@ -78,6 +78,45 @@ public sealed class UrlController(
         return Ok(items);
     }
 
+    [HttpPut("urls/{code}")]
+    [Authorize]
+    [ProducesResponseType(typeof(ShortenResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateUrlAsync(
+        [FromRoute] string code,
+        [FromBody] UpdateUrlRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserIdFromClaims();
+        if (userId is null)
+            return Unauthorized();
+
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var response = await urlShorteningService.UpdateUrlAsync(code, request.Url, userId.Value, baseUrl, cancellationToken);
+        return Ok(response);
+    }
+
+    [HttpDelete("urls/{code}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteUrlAsync(
+        [FromRoute] string code,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserIdFromClaims();
+        if (userId is null)
+            return Unauthorized();
+
+        await urlShorteningService.DeleteUrlAsync(code, userId.Value, cancellationToken);
+        return NoContent();
+    }
+
     private int? GetUserIdFromClaims()
     {
         var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub)

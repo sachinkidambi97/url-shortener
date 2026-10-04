@@ -13,6 +13,7 @@ namespace UrlShortener.Tests.Unit;
 public sealed class ExpirationTests
 {
     private readonly Mock<IUrlRepository> _urlRepositoryMock = new();
+    private readonly Mock<ICacheService> _cacheServiceMock = new();
     private readonly UrlShorteningService _sut;
 
     public ExpirationTests()
@@ -24,7 +25,7 @@ public sealed class ExpirationTests
             .Setup(r => r.CreateAsync(It.IsAny<ShortenedUrl>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ShortenedUrl u, CancellationToken _) => u);
 
-        _sut = new UrlShorteningService(_urlRepositoryMock.Object);
+        _sut = new UrlShorteningService(_urlRepositoryMock.Object, _cacheServiceMock.Object);
     }
 
     [Fact]

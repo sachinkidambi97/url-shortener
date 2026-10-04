@@ -10,11 +10,12 @@ namespace UrlShortener.Tests.Unit;
 public sealed class UrlShorteningServiceTests
 {
     private readonly Mock<IUrlRepository> _urlRepositoryMock = new();
+    private readonly Mock<ICacheService> _cacheServiceMock = new();
     private readonly UrlShorteningService _sut;
 
     public UrlShorteningServiceTests()
     {
-        _sut = new UrlShorteningService(_urlRepositoryMock.Object);
+        _sut = new UrlShorteningService(_urlRepositoryMock.Object, _cacheServiceMock.Object);
     }
 
     [Fact]

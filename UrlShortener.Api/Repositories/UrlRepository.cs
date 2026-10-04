@@ -27,6 +27,23 @@ public sealed class UrlRepository(AppDbContext dbContext, ILogger<UrlRepository>
         return shortenedUrl;
     }
 
+    public async Task<ShortenedUrl> UpdateAsync(ShortenedUrl shortenedUrl, CancellationToken cancellationToken = default)
+    {
+        dbContext.ShortenedUrls.Update(shortenedUrl);
+        await _retryPolicy.ExecuteAsync(() =>
+            dbContext.SaveChangesAsync(cancellationToken))
+            .ConfigureAwait(false);
+        return shortenedUrl;
+    }
+
+    public async Task DeleteAsync(ShortenedUrl shortenedUrl, CancellationToken cancellationToken = default)
+    {
+        dbContext.ShortenedUrls.Remove(shortenedUrl);
+        await _retryPolicy.ExecuteAsync(() =>
+            dbContext.SaveChangesAsync(cancellationToken))
+            .ConfigureAwait(false);
+    }
+
     public async Task<bool> ExistsByShortCodeAsync(string shortCode, CancellationToken cancellationToken = default)
         => await _retryPolicy.ExecuteAsync(() =>
             dbContext.ShortenedUrls
