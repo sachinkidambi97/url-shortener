@@ -1,0 +1,25 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.vs/
+*.DotSettings.user
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+publish/
+out/
+
+# Agent orchestration sessions (optional — remove this line to include session history)
+ssnc-agent-orch/
+
+# Claude
+.claude/
