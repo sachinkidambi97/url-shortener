@@ -61,6 +61,51 @@ public sealed partial class UrlShorteningService(IUrlRepository urlRepository, I
         };
     }
 
+    public async Task<BulkShortenResponse> BulkShortenAsync(
+        BulkShortenRequest request,
+        string baseUrl,
+        int? userId = null,
+        CancellationToken cancellationToken = default)
+    {
+        const int maxBulkItems = 100;
+        if (request.Items.Count > maxBulkItems)
+        {
+            throw new ArgumentException(
+                $"Bulk request exceeds the maximum of {maxBulkItems} URLs per request.", nameof(request));
+        }
+
+        var results = new List<BulkShortenResultItem>(request.Items.Count);
+
+        foreach (var item in request.Items)
+        {
+            try
+            {
+                var response = await ShortenAsync(item, baseUrl, userId, cancellationToken).ConfigureAwait(false);
+                results.Add(new BulkShortenResultItem
+                {
+                    Url = item.Url,
+                    ShortCode = response.ShortCode,
+                    ShortUrl = response.ShortUrl,
+                    Success = true,
+                    Error = null
+                });
+            }
+            catch (Exception ex)
+            {
+                results.Add(new BulkShortenResultItem
+                {
+                    Url = item.Url,
+                    ShortCode = null,
+                    ShortUrl = null,
+                    Success = false,
+                    Error = ex.Message
+                });
+            }
+        }
+
+        return new BulkShortenResponse { Results = results };
+    }
+
     public async Task<ShortenResponse> UpdateUrlAsync(
         string code,
         string newUrl,

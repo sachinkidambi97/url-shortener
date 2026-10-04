@@ -32,6 +32,21 @@ public sealed class UrlController(
         return Created(response.ShortUrl, response);
     }
 
+    [HttpPost("shorten/bulk")]
+    [Authorize]
+    [ProducesResponseType(typeof(BulkShortenResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> BulkShortenAsync(
+        [FromBody] BulkShortenRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserIdFromClaims();
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        BulkShortenResponse response = await urlShorteningService.BulkShortenAsync(request, baseUrl, userId, cancellationToken);
+        return Ok(response);
+    }
+
     [HttpGet("stats/{code}")]
     [Authorize]
     [ProducesResponseType(typeof(StatsResponse), StatusCodes.Status200OK)]
