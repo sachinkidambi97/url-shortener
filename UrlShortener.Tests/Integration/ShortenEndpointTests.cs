@@ -10,7 +10,7 @@ namespace UrlShortener.Tests.Integration;
 [Collection(IntegrationTestCollection.Name)]
 public sealed class ShortenEndpointTests(TestWebApplicationFactory factory)
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = factory.CreateAuthenticatedClient();
 
     [Fact]
     public async Task Post_ValidHttpsUrl_Returns201WithShortCode()
@@ -131,5 +131,15 @@ public sealed class ShortenEndpointTests(TestWebApplicationFactory factory)
 
         var body = await response.Content.ReadFromJsonAsync<ShortenResponse>();
         body!.ShortUrl.Should().StartWith("http://localhost");
+    }
+
+    [Fact]
+    public async Task Post_WithoutToken_Returns401()
+    {
+        var unauthClient = factory.CreateClient();
+        var request = new ShortenRequest { Url = "https://example.com" };
+        var response = await unauthClient.PostAsJsonAsync("/api/shorten", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }

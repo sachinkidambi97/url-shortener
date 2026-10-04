@@ -29,6 +29,7 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
         (int statusCode, string title, string detail) = exception switch
         {
             ArgumentException => (StatusCodes.Status400BadRequest, "Bad Request", exception.Message),
+            UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized", exception.Message),
             KeyNotFoundException => (StatusCodes.Status404NotFound, "Not Found", exception.Message),
             InvalidOperationException => (StatusCodes.Status409Conflict, "Conflict", exception.Message),
             HttpRequestException { StatusCode: HttpStatusCode.Gone } => (StatusCodes.Status410Gone, "Gone", exception.Message),

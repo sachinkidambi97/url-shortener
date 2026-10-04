@@ -8,7 +8,7 @@ namespace UrlShortener.Tests.Integration;
 [Collection(IntegrationTestCollection.Name)]
 public sealed class StatsEndpointTests(TestWebApplicationFactory factory)
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = factory.CreateAuthenticatedClient();
     private readonly HttpClient _nonRedirectClient = factory.CreateNonRedirectingClient();
 
     private async Task<string> CreateShortCodeAsync(string url)
@@ -120,5 +120,14 @@ public sealed class StatsEndpointTests(TestWebApplicationFactory factory)
         {
             stats.Clicks[0].ClickedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(30));
         }
+    }
+
+    [Fact]
+    public async Task GetStats_WithoutToken_Returns401()
+    {
+        var unauthClient = factory.CreateClient();
+        var response = await unauthClient.GetAsync("/api/stats/anycode");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }

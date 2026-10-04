@@ -18,6 +18,7 @@ public sealed partial class UrlShorteningService(IUrlRepository urlRepository) :
     public async Task<ShortenResponse> ShortenAsync(
         ShortenRequest request,
         string baseUrl,
+        int? userId = null,
         CancellationToken cancellationToken = default)
     {
         if (!Uri.TryCreate(request.Url, UriKind.Absolute, out var uri) ||
@@ -46,7 +47,8 @@ public sealed partial class UrlShorteningService(IUrlRepository urlRepository) :
             ShortCode = shortCode,
             OriginalUrl = request.Url,
             Alias = request.Alias,
-            ExpiresAt = request.ExpiresAt
+            ExpiresAt = request.ExpiresAt,
+            UserId = userId
         };
 
         await urlRepository.CreateAsync(shortenedUrl, cancellationToken).ConfigureAwait(false);

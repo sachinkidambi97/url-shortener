@@ -1,7 +1,11 @@
+using System.Text;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Serilog;
 using StackExchange.Redis;
 using UrlShortener.Api.Data;
@@ -27,7 +31,34 @@ try
     // Controllers
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
+
+    // Swagger with Bearer token support
+    builder.Services.AddSwaggerGen(c =>
+    {
+        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description = "Enter your JWT token. Example: eyJhbGci..."
+        });
+        c.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                Array.Empty<string>()
+            }
+        });
+    });
 
     // EF Core with PostgreSQL
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -44,6 +75,33 @@ try
     // Cache options
     builder.Services.Configure<CacheOptions>(builder.Configuration.GetSection(CacheOptions.SectionName));
 
+    // JWT options
+    builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+
+    // JWT Authentication
+    var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
+    var secretKey = jwtSection["SecretKey"]
+        ?? throw new InvalidOperationException("JWT SecretKey is not configured.");
+    var issuer = jwtSection["Issuer"] ?? "UrlShortener";
+    var audience = jwtSection["Audience"] ?? "UrlShortener";
+
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = issuer,
+                ValidAudience = audience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+            };
+        });
+
+    builder.Services.AddAuthorization();
+
     // Health checks
     builder.Services.AddHealthChecks()
         .AddNpgSql(connectionString, name: "db", tags: ["db"])
@@ -52,12 +110,14 @@ try
     // Repositories
     builder.Services.AddScoped<IUrlRepository, UrlRepository>();
     builder.Services.AddScoped<IClickEventRepository, ClickEventRepository>();
+    builder.Services.AddScoped<IUserRepository, UserRepository>();
 
     // Services
     builder.Services.AddScoped<IUrlShorteningService, UrlShorteningService>();
     builder.Services.AddScoped<ICacheService, RedisCacheService>();
     builder.Services.AddScoped<IRedirectService, RedirectService>();
     builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+    builder.Services.AddScoped<IAuthService, AuthService>();
 
     // Background services
     builder.Services.AddHostedService<ExpiredUrlCleanupService>();
@@ -103,13 +163,13 @@ try
 
     app.UseSerilogRequestLogging();
 
-    if (app.Environment.IsDevelopment())
-    {
-        app.UseSwagger();
-        app.UseSwaggerUI();
-    }
+    app.UseSwagger();
+    app.UseSwaggerUI();
 
     app.UseRateLimiter();
+
+    app.UseAuthentication();
+    app.UseAuthorization();
 
     // Health check endpoint (excluded from rate limiting)
     app.MapHealthChecks("/health", new HealthCheckOptions

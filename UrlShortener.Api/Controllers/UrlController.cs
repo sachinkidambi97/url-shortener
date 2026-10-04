@@ -1,6 +1,10 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using UrlShortener.Api.Models.Dtos;
+using UrlShortener.Api.Repositories;
 using UrlShortener.Api.Services;
 
 namespace UrlShortener.Api.Controllers;
@@ -10,23 +14,29 @@ namespace UrlShortener.Api.Controllers;
 [EnableRateLimiting("fixed")]
 public sealed class UrlController(
     IUrlShorteningService urlShorteningService,
-    IAnalyticsService analyticsService) : ControllerBase
+    IAnalyticsService analyticsService,
+    IUserRepository userRepository) : ControllerBase
 {
     [HttpPost("shorten")]
+    [Authorize]
     [ProducesResponseType(typeof(ShortenResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ShortenAsync(
         [FromBody] ShortenRequest request,
         CancellationToken cancellationToken)
     {
+        var userId = GetUserIdFromClaims();
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
-        ShortenResponse response = await urlShorteningService.ShortenAsync(request, baseUrl, cancellationToken);
+        ShortenResponse response = await urlShorteningService.ShortenAsync(request, baseUrl, userId, cancellationToken);
         return Created(response.ShortUrl, response);
     }
 
     [HttpGet("stats/{code}")]
+    [Authorize]
     [ProducesResponseType(typeof(StatsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetStatsAsync(
         [FromRoute] string code,
         CancellationToken cancellationToken)
@@ -41,5 +51,41 @@ public sealed class UrlController(
             });
 
         return Ok(stats);
+    }
+
+    [HttpGet("urls")]
+    [Authorize]
+    [ProducesResponseType(typeof(IReadOnlyList<UrlListItem>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMyUrlsAsync(CancellationToken cancellationToken)
+    {
+        var userId = GetUserIdFromClaims();
+        if (userId is null)
+            return Unauthorized();
+
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var urls = await userRepository.GetUrlsByUserIdAsync(userId.Value, cancellationToken);
+
+        var items = urls.Select(u => new UrlListItem
+        {
+            ShortCode = u.ShortCode,
+            ShortUrl = $"{baseUrl.TrimEnd('/')}/{u.ShortCode}",
+            OriginalUrl = u.OriginalUrl,
+            CreatedAt = u.CreatedAt,
+            ExpiresAt = u.ExpiresAt
+        }).ToList();
+
+        return Ok(items);
+    }
+
+    private int? GetUserIdFromClaims()
+    {
+        var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+               ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (sub is not null && int.TryParse(sub, out var id))
+            return id;
+
+        return null;
     }
 }

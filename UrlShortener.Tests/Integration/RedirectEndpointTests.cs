@@ -15,7 +15,7 @@ public sealed class RedirectEndpointTests(TestWebApplicationFactory factory)
 
     private async Task<string> CreateShortCodeAsync(string url)
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateAuthenticatedClient();
         var response = await client.PostAsJsonAsync("/api/shorten", new ShortenRequest { Url = url });
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<ShortenResponse>();

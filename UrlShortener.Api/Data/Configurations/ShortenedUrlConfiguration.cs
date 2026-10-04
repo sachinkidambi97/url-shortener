@@ -37,6 +37,9 @@ public sealed class ShortenedUrlConfiguration : IEntityTypeConfiguration<Shorten
         builder.Property(e => e.ExpiresAt)
             .HasColumnName("expires_at");
 
+        builder.Property(e => e.UserId)
+            .HasColumnName("user_id");
+
         builder.HasIndex(e => e.ShortCode)
             .IsUnique()
             .HasDatabaseName("ix_shortened_urls_short_code");

@@ -8,7 +8,7 @@ namespace UrlShortener.Tests.Integration;
 [Collection(IntegrationTestCollection.Name)]
 public sealed class AliasEndpointTests(TestWebApplicationFactory factory)
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = factory.CreateAuthenticatedClient();
     private readonly HttpClient _nonRedirectClient = factory.CreateNonRedirectingClient();
 
     [Fact]

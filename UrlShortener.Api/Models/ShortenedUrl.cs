@@ -9,5 +9,8 @@ public sealed class ShortenedUrl
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ExpiresAt { get; set; }
 
+    public int? UserId { get; set; }
+    public User? User { get; set; }
+
     public ICollection<ClickEvent> ClickEvents { get; set; } = new List<ClickEvent>();
 }
