@@ -102,6 +102,18 @@ try
 
     builder.Services.AddAuthorization();
 
+    // CORS
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowFrontend", policy =>
+        {
+            policy.WithOrigins("http://localhost:3000")
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        });
+    });
+
     // Health checks
     builder.Services.AddHealthChecks()
         .AddNpgSql(connectionString, name: "db", tags: ["db"])
@@ -167,6 +179,8 @@ try
     app.UseSwaggerUI();
 
     app.UseRateLimiter();
+
+    app.UseCors("AllowFrontend");
 
     app.UseAuthentication();
     app.UseAuthorization();
